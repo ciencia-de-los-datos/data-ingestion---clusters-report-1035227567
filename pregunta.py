@@ -9,26 +9,30 @@ espacio entre palabra y palabra.
 
 
 """
-import pandas as pd
 
+import pandas as pd
 
 def ingest_data():
 
-   df=pd.read_fwf('clusters_report.txt',widths=[9,16,16,77])
-   df=df.fillna(method='ffill')
-   df=df.groupby(df.columna[0]).agg({df.columna[1]: 'first', df.columna[2]: 'first', df.columna[3]: lambda x: ' '.join(x)}).reset_index()
-   df=df.rename(columna={'Cluster':'cluster','Cantidad de':'cantidad_palabras_clave','Porcentaje de':'porcentaje_de_palabras_clave','Principales palabras clave':'principales_palabras_clave'})
-   df.drop(0,axis=0,inplace=True)
-    
-   df['cluster'] = df['cluster'].astype(int)
-   df = df.sort_values('cluster')
-   df['cantidad_palabras_clave'] = df['cantidad_palabras_clave'].astype(int)
+    data = pd.read_fwf(        "clusters_report.txt", widths = [9, 16, 16, 80], header = None,
+        names = ["cluster","cantidad_de_palabras_clave","porcentaje_de_palabras_clave", "-"],
+        skip_blank_lines = False, converters = {"porcentaje_de_palabras_clave": 
+        lambda x: x.rstrip(" %").replace(",",".")}).drop([0,1,2,3], axis=0)
 
-   df['porcentaje_palabras_clave']=df['porcentaje_palabras_clave'].str.replace('%', '', regex=True)
-   df['porcentaje_palabras_clave'] = df['porcentaje_palabras_clave'].str.replace(',', '.', regex=True).astype(float)
+    columna4 = data["-"]
+    data = data[data["cluster"].notna()].drop("-", axis=1)
+    data = data.astype({ "cluster": int, "cantidad_de_palabras_clave": int, "porcentaje_de_palabras_clave": float})
 
-   df['principal_palabras_clave']=df['principal_palabras_clave'].str.replace('\s+', ' ', regex=True)
-   df['principal_palabras_clave']=df['principal_palabras_clave'].str.replace(',+', ',', regex=True)
-   df['principal_palabras_clave'] = df['principal_palabras_clave'].apply(lambda x: x.replace('.', ''))
- 
-   return df
+    c4Pro = []
+    text = ""
+    for lin in columna4:
+        if isinstance(lin, str): text += lin+" "
+        else:
+            text = ", ".join([" ".join(x.split()) for x in text.split(",")])
+            c4Pro.append(text.rstrip("."))
+            text = ""
+            continue
+
+    data["principales_palabras_clave"] = c4Pro
+
+    return data
